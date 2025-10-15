@@ -30,56 +30,90 @@
             max-height: 450px;
         }
 
-        /* --- ESTILOS DE IMPRESSÃO --- */
+        /* --- ESTILOS DE IMPRESSÃO OTIMIZADOS PARA QUADRO DE AVISOS --- */
         @media print {
-            /* Oculta elementos de navegação, filtros e barras laterais */
-            header, 
-            footer, 
-            #appContent, 
-            #sidebarContent,
-            button {
-                display: none !important;
+            /* 1. Global Print Settings */
+            body {
+                background-color: #fff !important;
+                margin: 0;
+                padding: 0;
+                color: #000;
             }
             
-            /* Garante que a área de impressão ocupe 100% da largura da página */
-            .container, 
-            main, 
-            .grid {
-                display: block;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
+            /* 2. Hide UI/Non-Print Elements */
+            header, 
+            footer, 
+            #appContent, /* Filtros e escala pessoal */
+            #sidebarContent, /* Gráfico e regras */
+            button,
+            .print\:hidden { 
+                display: none !important;
             }
 
-            /* Garante que o conteúdo da tabela seja visível */
+            /* 3. Focus on Printable Area (make it fill the page) */
             #printableArea {
                 width: 100%;
+                min-height: 100vh;
+                margin: 0;
+                padding: 20mm; /* Adiciona margem de segurança na página */
                 box-shadow: none !important;
                 border: none !important;
-                background-color: #fff;
-                padding: 20px !important;
+                background-color: #fff !important;
+            }
+            
+            /* 4. Título Principal da Impressão */
+            #printTitle {
+                font-size: 24pt;
+                font-weight: 800;
+                text-align: center;
+                margin-bottom: 20px;
+                padding-bottom: 10px;
+                border-bottom: 3px solid #000;
             }
 
-            /* Remove barras de rolagem e ajusta o tamanho da fonte para a impressão */
+
+            /* 5. Improve Table Readability for Printing */
             .overflow-x-auto {
                 overflow: visible !important;
             }
 
             table {
-                font-size: 9pt;
+                width: 100%;
+                font-size: 11pt; /* Font size para leitura em quadro */
                 border-collapse: collapse;
             }
 
             th, td {
-                padding: 8px;
-                border: 1px solid #ccc;
+                padding: 8px 6px;
+                border: 1px solid #000; /* Borda preta para clareza */
+                color: #000;
+            }
+            
+            thead {
+                background-color: #E5E7EB !important; 
+                -webkit-print-color-adjust: exact; /* Força cores de fundo no cabeçalho */
+                print-color-adjust: exact;
+            }
+            
+            /* Ensure text is black and background is white for highlighted person */
+            .highlight {
+                background-color: #F3F4F6 !important; /* Subtle background for highlight */
+                color: #000 !important;
+                font-weight: bold;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            /* Remove sombra e bordas arredondadas na impressão */
+            th, td {
+                border-radius: 0 !important;
             }
         }
     </style>
 </head>
 <body class="antialiased">
     <div class="container mx-auto p-4 sm:p-6 md:p-10">
-        <header class="text-center mb-10">
+        <header class="text-center mb-10 print:hidden">
             <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 tracking-tight">Painel de Escala de Atividades</h1>
             <p class="text-xl text-gray-500 mt-2">Novembro 2025 a Dezembro 2026: Visão Rápida e Personalizada</p>
         </header>
@@ -118,8 +152,14 @@
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-10">
                 
                 <div id="printableArea" class="xl:col-span-2 bg-white rounded-2xl shadow-xl p-4 md:p-8 border border-gray-100">
+                    
+                    <!-- NOVO TÍTULO DE IMPRESSÃO -->
+                    <h1 id="printTitle" class="hidden print:block text-2xl font-extrabold text-gray-800">
+                        ESCALA MENSAL DE ATIVIDADES: <span id="currentMonthDisplayPrint" class="text-cyan-700"></span>
+                    </h1>
+                    
                     <!-- Botão de impressão adicionado aqui -->
-                    <div class="flex justify-between items-center border-b pb-3 mb-5">
+                    <div class="flex justify-between items-center border-b pb-3 mb-5 print:hidden">
                         <h2 class="text-2xl font-bold text-gray-700">Quadro de Escala Mensal Detalhado (<span id="currentMonthDisplay"></span>)</h2>
                         <button onclick="window.print()" class="bg-indigo-600 text-white py-2 px-4 rounded-xl shadow-md hover:bg-indigo-700 transition duration-150 flex items-center gap-2 text-sm font-semibold print:hidden">
                             <!-- Ícone de Impressora SVG -->
@@ -147,7 +187,7 @@
                     </div>
                 </div>
 
-                <div id="sidebarContent" class="space-y-10"> <!-- Contém gráfico e regras - será escondido na impressão -->
+                <div id="sidebarContent" class="space-y-10 print:hidden"> <!-- Contém gráfico e regras - será escondido na impressão -->
                     <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
                         <h2 class="text-2xl font-bold mb-4 text-gray-700">Distribuição de Carga de Trabalho Total</h2>
                          <p class="text-sm text-gray-500 mb-4">Total de escalas designadas no período (Nov/2025 - Dez/2026).</p>
@@ -169,7 +209,7 @@
             </div>
         </main>
 
-        <footer class="text-center mt-16 py-6 border-t border-gray-300">
+        <footer class="text-center mt-16 py-6 border-t border-gray-300 print:hidden">
             <p class="text-gray-500 text-sm">Painel gerado em <span id="generationDate"></span> com foco em usabilidade e design responsivo.</p>
         </footer>
     </div>
@@ -314,13 +354,11 @@
             const currentMonth = today.getMonth(); // 0-11
             const currentMonthKey = `${currentYear}/${String(currentMonth).padStart(2, '0')}`;
             
-            // Lógica de Inicialização CORRIGIDA:
-            // 1. Tenta usar o mês atual do sistema, se ele estiver dentro da nossa escala.
+            // Lógica de Inicialização CORRIGIDA (garante Nov/2025 se fora da escala)
             if (multiMonthScheduleData[currentMonthKey]) {
                 currentFilters.month = currentMonthKey;
             } else {
-                // 2. Caso contrário (se o mês for anterior, posterior ou não tiver dados), 
-                //    força o primeiro mês da escala: Novembro 2025.
+                // Se o mês atual não estiver no intervalo ou for anterior/posterior, força o primeiro mês.
                 currentFilters.month = firstMonthKey; 
             }
             
@@ -364,7 +402,13 @@
             // CHRONOLOGICAL SORT FIX: Parsing YYYY/MM from the key
             const [year, monthIndexStr] = currentFilters.month.split('/');
             const monthIndex = parseInt(monthIndexStr);
-            document.getElementById('currentMonthDisplay').textContent = formatMonthYear(monthIndex, year);
+            const formattedMonthYear = formatMonthYear(monthIndex, year);
+            
+            // Atualiza o display no app (hidden na impressão)
+            document.getElementById('currentMonthDisplay').textContent = formattedMonthYear;
+            // Atualiza o display no título de impressão (hidden no app)
+            document.getElementById('currentMonthDisplayPrint').textContent = formattedMonthYear.toUpperCase();
+
 
             renderTable();
             renderPersonalSchedule();
