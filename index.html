@@ -162,7 +162,7 @@
                             <li class="font-medium text-gray-700"><b>Filipe:</b> Não trabalha às Quartas-Feiras. (Restrição Mantida)</li>
                             <li class="font-medium text-gray-700"><b>Alexandre:</b> Restrição de Indicador (Auditório/Entrada) às Quartas-Feiras.</li>
                             <li class="font-medium text-gray-700"><b>4 Membros:</b> (Gonçalves, Alex, Gilson, José Maria) não trabalham em Mesa de Som ou Vídeo.</li>
-                            <li class="font-medium text-gray-700"><b>Augusto:</b> Não trabalha em Vídeo, Mesa de Som ou Palco. <span class="text-red-500">(NOVA RESTRIÇÃO)</span></li>
+                            <li class="font-medium text-gray-700"><b>Augusto:</b> Não trabalha em Vídeo, Mesa de Som ou Palco.</li>
                         </ul>
                     </div>
                 </div>
@@ -185,7 +185,7 @@
             // Membros restritos em Vídeo e Mesa de Som (4 Membros)
             'Vídeo': ['Gilson', 'Gonçalves', 'Alex', 'José Maria', 'Augusto'], 
             'Mesa de Som': ['Gilson', 'Gonçalves', 'Alex', 'José Maria', 'Augusto'],
-            // NOVA RESTRIÇÃO: Augusto não trabalha no Palco
+            // Augusto não trabalha no Palco
             'Palco': ['Augusto'],
         };
         const DAY_NAMES = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
@@ -210,7 +210,7 @@
          * 3. Distribuição cíclica (fairness) ao longo do tempo.
          */
         function generateScheduleData() {
-            const startDate = new Date(2025, 10, 1); // Nov 1, 2025
+            const startDate = new Date(2025, 10, 1); // Nov 1, 2025 (Mês 10, pois 0=Jan)
             const endDate = new Date(2026, 11, 31); // Dec 31, 2026
 
             const schedule = {};
@@ -228,6 +228,7 @@
                 if (dayOfWeek === 3 || dayOfWeek === 6) {
                     const dia = DAY_NAMES[dayOfWeek];
                     const dateStr = `${String(currentDate.getDate()).padStart(2, '0')}/${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+                    // Chave no formato YYYY/MM (Mês 0=Jan, 11=Dez)
                     const monthYearKey = `${currentDate.getFullYear()}/${String(currentDate.getMonth()).padStart(2, '0')}`;
                     
                     const shift = { data: dateStr, dia: dia };
@@ -305,17 +306,28 @@
             populatePersonFilter();
             
             const availableMonths = Object.keys(multiMonthScheduleData).sort();
+            if (availableMonths.length === 0) return; // Se não houver dados, para aqui.
 
-            // LÓGICA: Tenta definir para o mês atual
+            const firstMonthKey = availableMonths[0]; // Nov/2025: "2025/10"
+            const lastMonthKey = availableMonths[availableMonths.length - 1]; // Dez/2026: "2026/11"
+
             const today = new Date();
             const currentMonthKey = `${today.getFullYear()}/${String(today.getMonth()).padStart(2, '0')}`;
-
-            if (multiMonthScheduleData[currentMonthKey]) {
-                // Mês atual está no intervalo gerado
+            
+            // Lógica de Inicialização Corrigida
+            if (currentMonthKey < firstMonthKey) {
+                // Se a data atual for anterior à escala (ex: Out 2025), mostra o primeiro mês (Nov 2025)
+                currentFilters.month = firstMonthKey;
+            } else if (currentMonthKey > lastMonthKey) {
+                // Se a data atual for posterior à escala (ex: Jan 2027), mostra o último mês (Dez 2026)
+                currentFilters.month = lastMonthKey;
+            } else if (multiMonthScheduleData[currentMonthKey]) {
+                // Se o mês atual estiver dentro do intervalo (ex: Abr 2026), mostra o mês atual
                 currentFilters.month = currentMonthKey;
-            } else if (availableMonths.length > 0) {
-                // Mês atual fora do intervalo, define para o último mês gerado (Dez/2026)
-                currentFilters.month = availableMonths[availableMonths.length - 1];
+            } else {
+                // Caso o mês atual caia em um mês sem datas (ex: Fevereiro de 2026, mas só tem Quarta/Sábado), usa o primeiro mês.
+                // Na nossa lógica, o mês é sempre gerado se for Quarta ou Sábado, mas o fallback garante que algo seja exibido.
+                currentFilters.month = firstMonthKey;
             }
             
             if (currentFilters.month) {
