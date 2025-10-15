@@ -162,6 +162,7 @@
                             <li class="font-medium text-gray-700"><b>Filipe:</b> Não trabalha às Quartas-Feiras. (Restrição Mantida)</li>
                             <li class="font-medium text-gray-700"><b>Alexandre:</b> Restrição de Indicador (Auditório/Entrada) às Quartas-Feiras.</li>
                             <li class="font-medium text-gray-700"><b>4 Membros:</b> (Gonçalves, Alex, Gilson, José Maria) não trabalham em Mesa de Som ou Vídeo.</li>
+                            <li class="font-medium text-gray-700"><b>Augusto:</b> Não trabalha em Vídeo, Mesa de Som ou Palco. <span class="text-red-500">(NOVA RESTRIÇÃO)</span></li>
                         </ul>
                     </div>
                 </div>
@@ -177,12 +178,15 @@
         const people = [
             'Fernando', 'Nikolas', 'Alexandre', 'Gilson', 'Henrique', 'Bruninho',
             'Bruno Fontes', 'Josivan', 'Gonçalves', 'Alex', 'Evandro', 'Leandro',
-            'Roosevelt', 'José Maria', 'Filipe'
+            'Roosevelt', 'José Maria', 'Filipe', 'Augusto'
         ];
         const activities = ['Vídeo', 'Mesa de Som', 'Microfone Volante', 'Palco', 'Indicador Auditório', 'Indicador Entrada'];
         const activityConstraints = {
-            'Vídeo': ['Gilson', 'Gonçalves', 'Alex', 'José Maria'],
-            'Mesa de Som': ['Gilson', 'Gonçalves', 'Alex', 'José Maria'],
+            // Membros restritos em Vídeo e Mesa de Som (4 Membros)
+            'Vídeo': ['Gilson', 'Gonçalves', 'Alex', 'José Maria', 'Augusto'], 
+            'Mesa de Som': ['Gilson', 'Gonçalves', 'Alex', 'José Maria', 'Augusto'],
+            // NOVA RESTRIÇÃO: Augusto não trabalha no Palco
+            'Palco': ['Augusto'],
         };
         const DAY_NAMES = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
         const MONTH_NAMES = [
@@ -259,7 +263,7 @@
                                 continue;
                             }
 
-                            // 4. RESTRIÇÃO: 4 Membros em Vídeo/Mesa de Som
+                            // 4. RESTRIÇÃO: Membros restritos (Vídeo, Mesa de Som, Palco)
                             const isActivityRestricted = activityConstraints[activity] && activityConstraints[activity].includes(currentPerson);
                             if (isActivityRestricted) {
                                 attempts++;
@@ -278,7 +282,7 @@
                         }
                         
                         if (!assignedPerson) {
-                            // Se não houver ninguém disponível (o que é improvável com 15 pessoas para 6 vagas)
+                            // Se não houver ninguém disponível (o que é improvável)
                             shift[activity] = 'VAZIO';
                         }
                     });
@@ -300,10 +304,21 @@
             populateMonthFilter();
             populatePersonFilter();
             
-            // Define o mês inicial (Dezembro 2026, o último mês)
             const availableMonths = Object.keys(multiMonthScheduleData).sort();
-            if (availableMonths.length > 0) {
+
+            // LÓGICA: Tenta definir para o mês atual
+            const today = new Date();
+            const currentMonthKey = `${today.getFullYear()}/${String(today.getMonth()).padStart(2, '0')}`;
+
+            if (multiMonthScheduleData[currentMonthKey]) {
+                // Mês atual está no intervalo gerado
+                currentFilters.month = currentMonthKey;
+            } else if (availableMonths.length > 0) {
+                // Mês atual fora do intervalo, define para o último mês gerado (Dez/2026)
                 currentFilters.month = availableMonths[availableMonths.length - 1];
+            }
+            
+            if (currentFilters.month) {
                 document.getElementById('monthFilter').value = currentFilters.month;
             }
             
