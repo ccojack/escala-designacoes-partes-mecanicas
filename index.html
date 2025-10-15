@@ -309,25 +309,19 @@
             if (availableMonths.length === 0) return; // Se não houver dados, para aqui.
 
             const firstMonthKey = availableMonths[0]; // Nov/2025: "2025/10"
-            const lastMonthKey = availableMonths[availableMonths.length - 1]; // Dez/2026: "2026/11"
-
             const today = new Date();
-            const currentMonthKey = `${today.getFullYear()}/${String(today.getMonth()).padStart(2, '0')}`;
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth(); // 0-11
+            const currentMonthKey = `${currentYear}/${String(currentMonth).padStart(2, '0')}`;
             
-            // Lógica de Inicialização Corrigida
-            if (currentMonthKey < firstMonthKey) {
-                // Se a data atual for anterior à escala (ex: Out 2025), mostra o primeiro mês (Nov 2025)
-                currentFilters.month = firstMonthKey;
-            } else if (currentMonthKey > lastMonthKey) {
-                // Se a data atual for posterior à escala (ex: Jan 2027), mostra o último mês (Dez 2026)
-                currentFilters.month = lastMonthKey;
-            } else if (multiMonthScheduleData[currentMonthKey]) {
-                // Se o mês atual estiver dentro do intervalo (ex: Abr 2026), mostra o mês atual
+            // Lógica de Inicialização CORRIGIDA:
+            // 1. Tenta usar o mês atual do sistema, se ele estiver dentro da nossa escala.
+            if (multiMonthScheduleData[currentMonthKey]) {
                 currentFilters.month = currentMonthKey;
             } else {
-                // Caso o mês atual caia em um mês sem datas (ex: Fevereiro de 2026, mas só tem Quarta/Sábado), usa o primeiro mês.
-                // Na nossa lógica, o mês é sempre gerado se for Quarta ou Sábado, mas o fallback garante que algo seja exibido.
-                currentFilters.month = firstMonthKey;
+                // 2. Caso contrário (se o mês for anterior, posterior ou não tiver dados), 
+                //    força o primeiro mês da escala: Novembro 2025.
+                currentFilters.month = firstMonthKey; 
             }
             
             if (currentFilters.month) {
