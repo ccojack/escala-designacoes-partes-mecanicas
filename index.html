@@ -29,39 +29,34 @@
             height: 400px;
             max-height: 450px;
         }
+        .admin-modal-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
 
         /* --- ESTILOS DE IMPRESSÃO OTIMIZADOS PARA QUADRO DE AVISOS --- */
         @media print {
-            /* 1. Global Print Settings */
-            body {
-                background-color: #fff !important;
-                margin: 0;
-                padding: 0;
-                color: #000;
-            }
-            
-            /* 2. Hide UI/Non-Print Elements */
-            header, 
-            footer, 
-            #appContent, /* Filtros e escala pessoal */
-            #sidebarContent, /* Gráfico e regras */
-            button,
-            .print\:hidden { 
+            body { background-color: #fff !important; margin: 0; padding: 0; color: #000; }
+            header, footer, #appContent, #sidebarContent, button, .print\:hidden, #adminPanelButton { 
                 display: none !important;
             }
-
-            /* 3. Focus on Printable Area (make it fill the page) */
             #printableArea {
                 width: 100%;
                 min-height: 100vh;
                 margin: 0;
-                padding: 20mm; /* Adiciona margem de segurança na página */
+                padding: 20mm;
                 box-shadow: none !important;
                 border: none !important;
                 background-color: #fff !important;
             }
-            
-            /* 4. Título Principal da Impressão */
             #printTitle {
                 font-size: 24pt;
                 font-weight: 800;
@@ -70,58 +65,106 @@
                 padding-bottom: 10px;
                 border-bottom: 3px solid #000;
             }
-
-
-            /* 5. Improve Table Readability for Printing */
-            .overflow-x-auto {
-                overflow: visible !important;
-            }
-
-            table {
-                width: 100%;
-                font-size: 11pt; /* Font size para leitura em quadro */
-                border-collapse: collapse;
-            }
-
-            th, td {
-                padding: 8px 6px;
-                border: 1px solid #000; /* Borda preta para clareza */
-                color: #000;
-            }
-            
-            thead {
-                background-color: #E5E7EB !important; 
-                -webkit-print-color-adjust: exact; /* Força cores de fundo no cabeçalho */
-                print-color-adjust: exact;
-            }
-            
-            /* Ensure text is black and background is white for highlighted person */
+            .overflow-x-auto { overflow: visible !important; }
+            table { width: 100%; font-size: 11pt; border-collapse: collapse; }
+            th, td { padding: 8px 6px; border: 1px solid #000; color: #000; }
+            thead { background-color: #E5E7EB !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .highlight {
-                background-color: #F3F4F6 !important; /* Subtle background for highlight */
+                background-color: #F3F4F6 !important;
                 color: #000 !important;
                 font-weight: bold;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            
-            /* Remove sombra e bordas arredondadas na impressão */
-            th, td {
-                border-radius: 0 !important;
-            }
+            th, td { border-radius: 0 !important; }
         }
     </style>
 </head>
 <body class="antialiased">
+    <!-- Modal de Administração -->
+    <div id="adminModalBackground" class="admin-modal-bg">
+        <div id="adminModal" class="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform scale-100 transition-transform duration-300">
+            <div class="flex justify-between items-center border-b pb-4 mb-6">
+                <h2 class="text-3xl font-extrabold text-indigo-700">Painel de Administração</h2>
+                <button onclick="closeAdminPanel()" class="text-gray-500 hover:text-gray-900 transition text-2xl font-bold p-2">
+                    &times;
+                </button>
+            </div>
+
+            <!-- Autenticação (Aberto por padrão, só aparece se não estiver logado) -->
+            <div id="adminAuth" class="space-y-4 max-w-sm mx-auto p-6 bg-indigo-50 rounded-xl shadow-inner">
+                <p class="text-gray-700 font-semibold text-center">Acesso Restrito</p>
+                <input type="password" id="adminPassword" placeholder="Digite a senha de admin" class="w-full p-3 border border-indigo-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-md">
+                <button onclick="checkAdminPassword()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition">
+                    Entrar
+                </button>
+                <p id="authMessage" class="text-red-500 text-center font-medium"></p>
+            </div>
+
+            <!-- Conteúdo de Gerenciamento (Escondido até a autenticação) -->
+            <div id="adminContent" class="hidden">
+                <!-- NOVO: Botão de Logout -->
+                <div class="flex justify-end mb-4">
+                    <button onclick="logoutAdmin()" class="bg-red-500 text-white py-2 px-4 rounded-xl font-bold hover:bg-red-600 transition text-sm shadow-md">
+                        Sair (Logout)
+                    </button>
+                </div>
+                
+                <p class="text-lg font-semibold text-green-700 mb-6 border-b pb-2">Configuração Global de Escala (Sincronizada via Firebase)</p>
+                
+                <!-- Gerenciamento de Membros -->
+                <div class="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                    <h3 class="text-xl font-bold mb-4 text-gray-800">Gerenciar Membros do Time</h3>
+                    <div class="flex gap-4 mb-4">
+                        <input type="text" id="newMemberName" placeholder="Novo Membro (Ex: João Silva)" class="flex-1 p-3 border border-gray-300 rounded-xl shadow-sm">
+                        <button onclick="addMember()" class="bg-green-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-green-700 transition">Adicionar</button>
+                    </div>
+                    <div id="memberList" class="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                        <!-- Lista de Membros Renderizada Aqui -->
+                    </div>
+                </div>
+
+                <!-- Gerenciamento de Restrições -->
+                <div class="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                    <h3 class="text-xl font-bold mb-4 text-gray-800">Gerenciar Restrições por Atividade</h3>
+                    <p class="text-sm text-gray-600 mb-4">Selecione uma atividade para ver/remover membros restritos.</p>
+                    <select id="constraintActivitySelector" class="w-full p-3 mb-4 border border-gray-300 rounded-xl shadow-sm bg-white" onchange="renderConstraintEditor()">
+                        <!-- Atividades Renderizadas Aqui -->
+                    </select>
+
+                    <div id="constraintEditor">
+                        <!-- Editor de Restrições Renderizado Aqui -->
+                    </div>
+                </div>
+                
+                <!-- Botão Salvar e Regenerar -->
+                <button onclick="saveAdminDataAndRegenerateSchedule()" class="w-full bg-red-600 text-white py-4 rounded-xl font-extrabold text-lg shadow-lg hover:bg-red-700 transition duration-150 transform hover:scale-[1.01]">
+                    SALVAR CONFIGURAÇÃO E REGERAR ESCALA COMPLETA
+                </button>
+                <p class="text-xs text-red-500 mt-2 text-center">Atenção: A regeneração da escala pode levar alguns segundos.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal do Painel -->
     <div class="container mx-auto p-4 sm:p-6 md:p-10">
+        
         <header class="text-center mb-10 print:hidden">
             <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 tracking-tight">Painel de Escala de Atividades</h1>
             <p class="text-xl text-gray-500 mt-2">Novembro 2025 a Dezembro 2026: Visão Rápida e Personalizada</p>
         </header>
 
         <main>
-            <div id="appContent"> <!-- Contém filtros e escala pessoal - será escondido na impressão -->
+            <div id="appContent">
                 <div class="bg-white rounded-2xl shadow-xl p-6 mb-10 border border-gray-100">
-                    <h2 class="text-2xl font-bold mb-5 text-gray-700 border-b pb-3">Filtros Interativos</h2>
+                    <div class="flex justify-between items-center border-b pb-3 mb-5">
+                        <h2 class="text-2xl font-bold text-gray-700">Filtros Interativos</h2>
+                        <button id="adminPanelButton" onclick="openAdminPanel()" class="bg-indigo-500 text-white py-2 px-4 rounded-xl shadow-md hover:bg-indigo-600 transition duration-150 text-sm font-semibold flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18c-.68.18-1.34.34-2 .5a2 2 0 0 0-2 2v.46c-.37.52-.72 1.05-1.03 1.62a2 2 0 0 0 0 2.22c.31.57.66 1.1 1.03 1.62v.46a2 2 0 0 0 2 2c.66.16 1.32.32 2 .5v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18c.68-.18 1.34-.34 2-.5a2 2 0 0 0 2-2v-.46c.37-.52.72-1.05 1.03-1.62a2 2 0 0 0 0-2.22c-.31-.57-.66-1.1-1.03-1.62v-.46a2 2 0 0 0-2-2c-.66-.16-1.32-.32-2-.5V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                            Admin
+                        </button>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
                         <div class="w-full">
                             <label for="monthFilter" class="block text-sm font-medium text-gray-600 mb-1">Mês:</label>
@@ -147,22 +190,19 @@
                 </div>
 
                 <div id="personalSchedule" class="mb-10"></div>
-            </div> <!-- Fim de appContent -->
+            </div>
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-10">
                 
                 <div id="printableArea" class="xl:col-span-2 bg-white rounded-2xl shadow-xl p-4 md:p-8 border border-gray-100">
                     
-                    <!-- NOVO TÍTULO DE IMPRESSÃO -->
                     <h1 id="printTitle" class="hidden print:block text-2xl font-extrabold text-gray-800">
                         ESCALA MENSAL DE ATIVIDADES: <span id="currentMonthDisplayPrint" class="text-cyan-700"></span>
                     </h1>
                     
-                    <!-- Botão de impressão adicionado aqui -->
                     <div class="flex justify-between items-center border-b pb-3 mb-5 print:hidden">
                         <h2 class="text-2xl font-bold text-gray-700">Quadro de Escala Mensal Detalhado (<span id="currentMonthDisplay"></span>)</h2>
                         <button onclick="window.print()" class="bg-indigo-600 text-white py-2 px-4 rounded-xl shadow-md hover:bg-indigo-700 transition duration-150 flex items-center gap-2 text-sm font-semibold print:hidden">
-                            <!-- Ícone de Impressora SVG -->
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                             Imprimir Mês
                         </button>
@@ -187,7 +227,7 @@
                     </div>
                 </div>
 
-                <div id="sidebarContent" class="space-y-10 print:hidden"> <!-- Contém gráfico e regras - será escondido na impressão -->
+                <div id="sidebarContent" class="space-y-10 print:hidden">
                     <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
                         <h2 class="text-2xl font-bold mb-4 text-gray-700">Distribuição de Carga de Trabalho Total</h2>
                          <p class="text-sm text-gray-500 mb-4">Total de escalas designadas no período (Nov/2025 - Dez/2026).</p>
@@ -197,12 +237,9 @@
                     </div>
                     <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
                         <h2 class="text-2xl font-bold mb-4 text-gray-700">Regras e Restrições Chave</h2>
-                        <ul class="list-disc list-inside space-y-3 text-gray-600 pl-3">
-                            <li class="font-bold text-red-600">**Restrição Global:** Uma pessoa só pode ser escalada para **uma atividade por dia**.</li>
-                            <li class="font-medium text-gray-700"><b>Filipe:</b> Não trabalha às Quartas-Feiras. (Restrição Mantida)</li>
-                            <li class="font-medium text-gray-700"><b>Alexandre:</b> Restrição de Indicador (Auditório/Entrada) às Quartas-Feiras.</li>
-                            <li class="font-medium text-gray-700"><b>4 Membros:</b> (Gonçalves, Alex, Gilson, José Maria) não trabalham em Mesa de Som ou Vídeo.</li>
-                            <li class="font-medium text-gray-700"><b>Augusto:</b> Não trabalha em Vídeo, Mesa de Som ou Palco.</li>
+                        <ul id="rulesList" class="list-disc list-inside space-y-3 text-gray-600 pl-3">
+                             <li class="font-bold text-red-600">**Restrição Global:** Uma pessoa só pode ser escalada para **uma atividade por dia**.</li>
+                             <!-- Regras dinâmicas serão adicionadas aqui -->
                         </ul>
                     </div>
                 </div>
@@ -214,54 +251,176 @@
         </footer>
     </div>
 
-    <script>
-        const people = [
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, addDoc, where, getDocs, runTransaction, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variáveis Globais MANDATÓRIAS
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        const ADMIN_PASSWORD = "P@ssw0rd";
+        const FIREBASE_DOC_PATH = `artifacts/${appId}/public/data/scheduleData`;
+        const FIREBASE_CONFIG_DOC_ID = 'config';
+        
+        let db, auth;
+        let isAuthReady = false;
+        let isAdminLoggedIn = false;
+
+        // ESTADO GLOBAL DO APLICATIVO (DADOS SINCRONIZADOS PELO FIRESTORE)
+        let appState = {
+            people: [],
+            constraints: {},
+            multiMonthScheduleData: {},
+            loading: true,
+            isDataInitialized: false,
+        };
+        
+        // DADOS PADRÕES INICIAIS (FALLBACK)
+        const DEFAULT_PEOPLE = [
             'Fernando', 'Nikolas', 'Alexandre', 'Gilson', 'Henrique', 'Bruninho',
             'Bruno Fontes', 'Josivan', 'Gonçalves', 'Alex', 'Evandro', 'Leandro',
             'Roosevelt', 'José Maria', 'Filipe', 'Augusto'
         ];
-        const activities = ['Vídeo', 'Mesa de Som', 'Microfone Volante', 'Palco', 'Indicador Auditório', 'Indicador Entrada'];
-        const activityConstraints = {
-            // Membros restritos em Vídeo e Mesa de Som (4 Membros)
+        const DEFAULT_CONSTRAINTS = {
             'Vídeo': ['Gilson', 'Gonçalves', 'Alex', 'José Maria', 'Augusto'], 
             'Mesa de Som': ['Gilson', 'Gonçalves', 'Alex', 'José Maria', 'Augusto'],
-            // Augusto não trabalha no Palco
+            'Microfone Volante': [],
             'Palco': ['Augusto'],
+            'Indicador Auditório': [],
+            'Indicador Entrada': []
         };
+        const activities = Object.keys(DEFAULT_CONSTRAINTS);
+
+        // VARIÁVEIS DE CONTROLE DE ESCALA
+        let workloadChart;
+        let currentFilters = { month: '', person: 'todos', day: 'todos' };
+        
+        // CONSTANTES GLOBAIS
         const DAY_NAMES = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO'];
         const MONTH_NAMES = [
             'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
             'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
         ];
-        
-        let multiMonthScheduleData = {};
-        let workloadChart;
-        let currentFilters = { month: '', person: 'todos', day: 'todos' };
+        const START_DATE = new Date(2025, 10, 1); // Nov 1, 2025 (Mês 10, pois 0=Jan)
+        const END_DATE = new Date(2026, 11, 31); // Dec 31, 2026
 
-        // Função para formatar a string do mês/ano
-        function formatMonthYear(month, year) {
-            return `${MONTH_NAMES[month]} / ${year}`;
+
+        // --- FIREBASE INICIALIZAÇÃO ---
+        async function setupFirebase() {
+            try {
+                if (firebaseConfig) {
+                    // setLogLevel('Debug'); // Habilitar logs
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    isAuthReady = true;
+                    console.log("Firebase Autenticado e Pronto.");
+                    
+                    // Inicia o Listener de Sincronização
+                    listenToConfigChanges();
+                } else {
+                    // Fallback para dados locais se Firebase não estiver configurado
+                    appState.people = DEFAULT_PEOPLE;
+                    appState.constraints = DEFAULT_CONSTRAINTS;
+                    appState.isDataInitialized = true;
+                    appState.loading = false;
+                    
+                    // Gera a escala localmente (sem persistência)
+                    appState.multiMonthScheduleData = generateScheduleData(appState.people, appState.constraints);
+                    
+                    initializeUI();
+                    console.warn("Firebase Configuração não encontrada. Usando dados locais (sem persistência).");
+                }
+            } catch (error) {
+                console.error("Erro ao configurar Firebase:", error);
+                appState.loading = false;
+                initializeUI();
+            }
         }
 
-        /**
-         * Gera dados de escala para múltiplos meses, garantindo:
-         * 1. Uma pessoa por dia em apenas uma atividade.
-         * 2. Respeito a todas as restrições de exceção.
-         * 3. Distribuição cíclica (fairness) ao longo do tempo.
-         */
-        function generateScheduleData() {
-            const startDate = new Date(2025, 10, 1); // Nov 1, 2025 (Mês 10, pois 0=Jan)
-            const endDate = new Date(2026, 11, 31); // Dec 31, 2026
+        function listenToConfigChanges() {
+            const docRef = doc(db, FIREBASE_DOC_PATH, FIREBASE_CONFIG_DOC_ID);
 
-            const schedule = {};
+            onSnapshot(docRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    
+                    appState.people = data.people || DEFAULT_PEOPLE;
+                    appState.constraints = data.constraints || DEFAULT_CONSTRAINTS;
+                    appState.multiMonthScheduleData = data.scheduleCache || {};
+                    appState.isDataInitialized = true;
+                    
+                    console.log("Dados de configuração atualizados do Firestore.");
+                } else {
+                    // Documento não existe: Inicializa com os dados padrão e salva
+                    console.log("Documento de configuração não encontrado. Inicializando e salvando dados padrão...");
+                    appState.people = DEFAULT_PEOPLE;
+                    appState.constraints = DEFAULT_CONSTRAINTS;
+                    // Força a geração da primeira escala
+                    appState.multiMonthScheduleData = generateScheduleData(appState.people, appState.constraints); 
+                    await saveAppStateToFirestore(false); // Salva o estado inicial, incluindo a escala
+                    appState.isDataInitialized = true;
+                }
+                
+                appState.loading = false;
+                initializeUI();
+            }, (error) => {
+                console.error("Erro no Listener do Firestore:", error);
+            });
+        }
+        
+        async function saveAppStateToFirestore(showSuccess = true) {
+            if (!isAuthReady || !db) {
+                console.error("Não é possível salvar: Firebase não está pronto.");
+                return;
+            }
             
+            const docRef = doc(db, FIREBASE_DOC_PATH, FIREBASE_CONFIG_DOC_ID);
+            
+            try {
+                await setDoc(docRef, {
+                    people: appState.people,
+                    constraints: appState.constraints,
+                    scheduleCache: appState.multiMonthScheduleData,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+                
+                if (showSuccess) {
+                     // Substituindo alert por console.log e mensagem de sucesso
+                     console.log("Configuração salva com sucesso! A escala foi regenerada.");
+                }
+            } catch (error) {
+                console.error("Erro ao salvar dados no Firestore:", error);
+                // Substituindo alert por console.error
+                console.error("Erro ao salvar configuração. Verifique o console.");
+            }
+        }
+
+
+        // --- LÓGICA DE GERAÇÃO DE ESCALA ---
+
+        /**
+         * Gera dados de escala para múltiplos meses com base no estado atual.
+         * Esta função é puramente computacional e não interage com a UI ou Firestore.
+         */
+        function generateScheduleData(people, constraints) {
+            const schedule = {};
             // Usamos um array de índices para rastrear o ponto de partida do ciclo 
             // para CADA atividade, garantindo a distribuição justa (fairness).
             const activityIndices = activities.map(() => 0); 
 
-            let currentDate = startDate;
+            let currentDate = new Date(START_DATE);
             
-            while (currentDate <= endDate) {
+            while (currentDate <= END_DATE) {
                 const dayOfWeek = currentDate.getDay();
                 
                 // Procurar apenas Quartas (3) e Sábados (6)
@@ -272,16 +431,14 @@
                     const monthYearKey = `${currentDate.getFullYear()}/${String(currentDate.getMonth()).padStart(2, '0')}`;
                     
                     const shift = { data: dateStr, dia: dia };
-                    const assignedPeopleToday = new Set(); // Conjunto para garantir a unicidade por dia
+                    const assignedPeopleToday = new Set(); 
 
                     activities.forEach((activity, activityIndex) => {
                         let assignedPerson = null;
                         let attempts = 0;
                         
-                        // Começa o ciclo a partir do último índice que esta atividade usou
                         let startIndex = activityIndices[activityIndex];
                         
-                        // Tenta percorrer todas as pessoas para encontrar um candidato válido
                         while (attempts < people.length) { 
                             const personIndex = (startIndex + attempts) % people.length;
                             const currentPerson = people[personIndex];
@@ -292,38 +449,37 @@
                                 continue; 
                             }
 
-                            // 2. RESTRIÇÃO: Filipe não trabalha às Quartas
+                            // 2. RESTRIÇÕES ESPECIAIS (Hardcoded, pois dependem do dia)
+                            // Filipe não trabalha às Quartas
                             if (currentPerson === 'Filipe' && dia === 'QUARTA') {
                                 attempts++;
                                 continue; 
                             }
-
-                            // 3. RESTRIÇÃO: Alexandre em Indicadores às Quartas
+                            // Alexandre Restrição de Indicador às Quartas
                             if (currentPerson === 'Alexandre' && dia === 'QUARTA' && activity.includes('Indicador')) {
                                 attempts++;
                                 continue;
                             }
 
-                            // 4. RESTRIÇÃO: Membros restritos (Vídeo, Mesa de Som, Palco)
-                            const isActivityRestricted = activityConstraints[activity] && activityConstraints[activity].includes(currentPerson);
-                            if (isActivityRestricted) {
+                            // 3. RESTRIÇÃO: Restrições configuráveis (via Admin Panel)
+                            const restrictedList = constraints[activity] || [];
+                            if (restrictedList.includes(currentPerson)) {
                                 attempts++;
                                 continue;
                             }
                             
                             // --- ATRIBUIÇÃO BEM-SUCEDIDA ---
                             assignedPerson = currentPerson;
-                            assignedPeopleToday.add(assignedPerson); // Marca a pessoa como ocupada neste dia
+                            assignedPeopleToday.add(assignedPerson);
                             shift[activity] = assignedPerson;
                             
-                            // Atualiza o índice para onde o ciclo da atividade deve começar da próxima vez
+                            // Atualiza o índice para o próximo
                             activityIndices[activityIndex] = (personIndex + 1) % people.length; 
                             
-                            break; // Sai do loop 'while'
+                            break;
                         }
                         
                         if (!assignedPerson) {
-                            // Se não houver ninguém disponível (o que é improvável)
                             shift[activity] = 'VAZIO';
                         }
                     });
@@ -339,14 +495,24 @@
             return schedule;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            multiMonthScheduleData = generateScheduleData();
+        // --- LÓGICA DE UI E FILTROS ---
+
+        function initializeUI() {
+            if (appState.loading || !appState.isDataInitialized) {
+                 // Poderia adicionar um spinner de loading aqui
+                 console.log("Aguardando dados iniciais...");
+                 return; 
+            }
             
+            // Renderiza filtros e define o mês inicial
             populateMonthFilter();
             populatePersonFilter();
             
-            const availableMonths = Object.keys(multiMonthScheduleData).sort();
-            if (availableMonths.length === 0) return; // Se não houver dados, para aqui.
+            const availableMonths = Object.keys(appState.multiMonthScheduleData).sort();
+            if (availableMonths.length === 0) {
+                console.error("Nenhuma escala gerada.");
+                return;
+            }
 
             const firstMonthKey = availableMonths[0]; // Nov/2025: "2025/10"
             const today = new Date();
@@ -354,11 +520,10 @@
             const currentMonth = today.getMonth(); // 0-11
             const currentMonthKey = `${currentYear}/${String(currentMonth).padStart(2, '0')}`;
             
-            // Lógica de Inicialização CORRIGIDA (garante Nov/2025 se fora da escala)
-            if (multiMonthScheduleData[currentMonthKey]) {
+            // Tenta usar o mês atual, senão usa o primeiro mês da escala
+            if (appState.multiMonthScheduleData[currentMonthKey]) {
                 currentFilters.month = currentMonthKey;
             } else {
-                // Se o mês atual não estiver no intervalo ou for anterior/posterior, força o primeiro mês.
                 currentFilters.month = firstMonthKey; 
             }
             
@@ -369,7 +534,7 @@
             renderAll();
             setupEventListeners();
             document.getElementById('generationDate').textContent = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-        });
+        }
 
         function setupEventListeners() {
             document.getElementById('monthFilter').addEventListener('change', (e) => {
@@ -396,33 +561,32 @@
             });
         }
         
+        function formatMonthYear(month, year) {
+            return `${MONTH_NAMES[month]} / ${year}`;
+        }
+
         function renderAll() {
             if (!currentFilters.month) return; 
 
-            // CHRONOLOGICAL SORT FIX: Parsing YYYY/MM from the key
             const [year, monthIndexStr] = currentFilters.month.split('/');
             const monthIndex = parseInt(monthIndexStr);
             const formattedMonthYear = formatMonthYear(monthIndex, year);
             
-            // Atualiza o display no app (hidden na impressão)
             document.getElementById('currentMonthDisplay').textContent = formattedMonthYear;
-            // Atualiza o display no título de impressão (hidden no app)
             document.getElementById('currentMonthDisplayPrint').textContent = formattedMonthYear.toUpperCase();
-
 
             renderTable();
             renderPersonalSchedule();
             renderOrUpdateChart();
+            renderRulesList(); // Atualiza a lista de regras dinamicamente
         }
-
+        
         function populateMonthFilter() {
             const select = document.getElementById('monthFilter');
             select.innerHTML = '';
             
-            // The keys are now sorted correctly (YYYY/MM)
-            const monthKeys = Object.keys(multiMonthScheduleData).sort();
+            const monthKeys = Object.keys(appState.multiMonthScheduleData).sort();
             monthKeys.forEach(key => {
-                // CHRONOLOGICAL SORT FIX: Parsing YYYY/MM from the key
                 const [year, monthIndexStr] = key.split('/');
                 const monthIndex = parseInt(monthIndexStr);
                 const option = document.createElement('option');
@@ -434,19 +598,29 @@
 
         function populatePersonFilter() {
             const select = document.getElementById('personFilter');
-            people.sort().forEach(person => {
+            const selectedValue = select.value;
+            select.innerHTML = '<option value="todos">Mostrar todos</option>';
+            
+            appState.people.sort().forEach(person => {
                 const option = document.createElement('option');
                 option.value = person;
                 option.textContent = person;
                 select.appendChild(option);
             });
+
+            // Tenta manter o valor selecionado
+            if (appState.people.includes(selectedValue) || selectedValue === 'todos') {
+                 select.value = selectedValue;
+            } else {
+                 select.value = 'todos';
+            }
         }
 
         function renderTable() {
             const tableBody = document.getElementById('scheduleTableBody');
             tableBody.innerHTML = '';
             
-            const monthData = multiMonthScheduleData[currentFilters.month] || [];
+            const monthData = appState.multiMonthScheduleData[currentFilters.month] || [];
 
             const filteredData = monthData.filter(row => {
                 return currentFilters.day === 'todos' || row.dia === currentFilters.day;
@@ -476,7 +650,7 @@
                 return;
             }
 
-            const personSchedule = (multiMonthScheduleData[currentFilters.month] || []).reduce((acc, row) => {
+            const personSchedule = (appState.multiMonthScheduleData[currentFilters.month] || []).reduce((acc, row) => {
                 activities.forEach(activity => {
                     if (row[activity] === currentFilters.person) {
                         acc.push({ date: row.data, day: row.dia, activity: activity });
@@ -485,7 +659,8 @@
                 return acc;
             }, []);
 
-            if (personSchedule.length > 0) {
+            // ... (Restante da lógica de renderização da escala pessoal, que permanece a mesma)
+             if (personSchedule.length > 0) {
                  let scheduleHTML = `
                     <div class="bg-cyan-50 border-l-8 border-cyan-600 rounded-xl shadow-lg p-6">
                         <h2 class="text-2xl font-bold text-cyan-800 mb-5">Sua Escala em ${document.getElementById('currentMonthDisplay').textContent}, ${currentFilters.person}</h2>
@@ -512,15 +687,34 @@
                  `;
             }
         }
+        
+        function renderRulesList() {
+            const list = document.getElementById('rulesList');
+            // Mantém a regra global
+            list.innerHTML = `<li class="font-bold text-red-600">**Restrição Global:** Uma pessoa só pode ser escalada para **uma atividade por dia**.</li>`;
+            
+            // Adiciona as regras hardcoded
+            list.innerHTML += `<li class="font-medium text-gray-700"><b>Filipe:</b> Não trabalha às Quartas-Feiras.</li>`;
+            list.innerHTML += `<li class="font-medium text-gray-700"><b>Alexandre:</b> Restrição de Indicador (Auditório/Entrada) às Quartas-Feiras.</li>`;
+            
+            // Adiciona as regras configuráveis do Admin Panel
+            for (const activity in appState.constraints) {
+                const restrictedPeople = appState.constraints[activity];
+                if (restrictedPeople && restrictedPeople.length > 0) {
+                    const peopleList = restrictedPeople.join(', ');
+                    list.innerHTML += `<li class="font-medium text-gray-700"><b>${activity}:</b> Restrição para: ${peopleList}.</li>`;
+                }
+            }
+        }
 
         // Calcula a carga de trabalho de TODO O PERÍODO
         function calculateWorkload() {
             const workload = {};
-            people.forEach(p => workload[p] = 0);
+            appState.people.forEach(p => workload[p] = 0);
             
-            Object.values(multiMonthScheduleData).flat().forEach(row => {
+            Object.values(appState.multiMonthScheduleData).flat().forEach(row => {
                 activities.forEach(activity => {
-                    if (row[activity] && people.includes(row[activity])) {
+                    if (row[activity] && appState.people.includes(row[activity])) {
                         workload[row[activity]]++;
                     }
                 });
@@ -562,38 +756,216 @@
                         indexAxis: 'y',
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                             tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return ` Escalas: ${context.raw}`;
-                                    }
-                                }
-                            }
-                        },
+                        plugins: { legend: { display: false } },
                         scales: {
-                            x: {
-                                beginAtZero: true,
-                                ticks: {
-                                    stepSize: 1
-                                },
-                                grid: {
-                                    color: '#E5E7EB'
-                                }
-                            },
-                            y: {
-                                grid: {
-                                    display: false
-                                }
-                            }
+                            x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#E5E7EB' } },
+                            y: { grid: { display: false } }
                         }
                     }
                 });
             }
         }
+        
+        // --- LÓGICA DO PAINEL DE ADMINISTRAÇÃO ---
+
+        function openAdminPanel() {
+            document.getElementById('adminModalBackground').style.display = 'flex';
+            if (isAdminLoggedIn) {
+                 renderAdminPanelContent();
+            } else {
+                document.getElementById('adminAuth').classList.remove('hidden');
+                document.getElementById('adminContent').classList.add('hidden');
+                document.getElementById('adminPassword').value = '';
+                document.getElementById('authMessage').textContent = '';
+            }
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminModalBackground').style.display = 'none';
+        }
+
+        function checkAdminPassword() {
+            const password = document.getElementById('adminPassword').value;
+            const msg = document.getElementById('authMessage');
+
+            if (password === ADMIN_PASSWORD) {
+                isAdminLoggedIn = true;
+                msg.textContent = '';
+                document.getElementById('adminAuth').classList.add('hidden');
+                document.getElementById('adminContent').classList.remove('hidden');
+                renderAdminPanelContent();
+            } else {
+                msg.textContent = 'Senha incorreta. Tente novamente.';
+                document.getElementById('adminPassword').value = '';
+            }
+        }
+        
+        // NOVO: Função de Logout
+        function logoutAdmin() {
+            isAdminLoggedIn = false;
+            document.getElementById('adminAuth').classList.remove('hidden');
+            document.getElementById('adminContent').classList.add('hidden');
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('authMessage').textContent = 'Sessão encerrada.';
+            // Opcional: fechar o modal ao fazer logout
+            // closeAdminPanel(); 
+        }
+
+        function renderAdminPanelContent() {
+            renderMemberList();
+            populateConstraintActivitySelector();
+            // Garante que o editor de restrições renderize a primeira atividade ao abrir o painel
+            renderConstraintEditor(); 
+        }
+
+        // Membros
+        function renderMemberList() {
+            const listContainer = document.getElementById('memberList');
+            listContainer.innerHTML = '';
+            
+            appState.people.forEach(member => {
+                const chip = document.createElement('div');
+                chip.className = 'flex items-center bg-indigo-200 text-indigo-900 text-sm font-semibold px-3 py-1 rounded-full shadow-sm';
+                chip.innerHTML = `
+                    <span>${member}</span>
+                    <button onclick="removeMember('${member}')" class="ml-2 text-indigo-700 hover:text-red-700 transition font-bold text-lg leading-none">&times;</button>
+                `;
+                listContainer.appendChild(chip);
+            });
+        }
+        
+        function addMember() {
+            const input = document.getElementById('newMemberName');
+            const name = input.value.trim();
+            if (name && !appState.people.includes(name)) {
+                appState.people.push(name);
+                appState.people.sort();
+                input.value = '';
+                renderMemberList();
+                populatePersonFilter(); // Atualiza o filtro principal
+            } else if (appState.people.includes(name)) {
+                // Substituindo alert por console.log
+                console.log("Este membro já existe.");
+            }
+        }
+
+        function removeMember(name) {
+             // Substituindo confirm() por console.log e ignorando por agora. Em um ambiente real, deve ser substituído por um modal.
+             if (true) { // Supondo confirmação
+                appState.people = appState.people.filter(p => p !== name);
+                
+                // Remove o membro das restrições também
+                for(const activity in appState.constraints) {
+                    appState.constraints[activity] = appState.constraints[activity].filter(p => p !== name);
+                }
+                
+                renderMemberList();
+                populatePersonFilter();
+                renderConstraintEditor(); // Atualiza o editor de restrições
+             }
+        }
+        
+        // Restrições/Exceções
+        function populateConstraintActivitySelector() {
+            const select = document.getElementById('constraintActivitySelector');
+            select.innerHTML = '';
+            activities.forEach(activity => {
+                const option = document.createElement('option');
+                option.value = activity;
+                option.textContent = activity;
+                select.appendChild(option);
+            });
+        }
+        
+        function renderConstraintEditor() {
+            const activity = document.getElementById('constraintActivitySelector').value;
+            const editor = document.getElementById('constraintEditor');
+            editor.innerHTML = '';
+
+            const restrictedPeople = appState.constraints[activity] || [];
+            
+            let html = `
+                <p class="text-md font-medium mb-3 text-gray-700">Membros atualmente RESTRITOS em <b>${activity}</b>:</p>
+                <div id="currentRestrictions" class="flex flex-wrap gap-2 mb-6 border p-3 rounded-xl bg-white min-h-[40px]">
+            `;
+            
+            restrictedPeople.forEach(person => {
+                 html += `
+                    <div class="flex items-center bg-red-100 text-red-900 text-sm font-semibold px-3 py-1 rounded-full shadow-sm">
+                        <span>${person}</span>
+                        <button onclick="removeConstraint('${activity}', '${person}')" class="ml-2 text-red-700 hover:text-red-900 transition font-bold text-lg leading-none">&times;</button>
+                    </div>
+                `;
+            });
+            html += restrictedPeople.length === 0 ? `<span class="text-gray-500">Nenhum membro restrito.</span>` : '';
+            html += `</div>`;
+            
+            // Adicionar nova restrição
+            const availablePeople = appState.people.filter(p => !restrictedPeople.includes(p));
+            
+            if (availablePeople.length > 0) {
+                html += `
+                    <p class="text-md font-medium mb-2 text-gray-700">Adicionar nova restrição:</p>
+                    <div class="flex gap-4">
+                        <select id="personToRestrict" class="flex-1 p-3 border border-gray-300 rounded-xl shadow-sm bg-white">
+                            ${availablePeople.map(p => `<option value="${p}">${p}</option>`).join('')}
+                        </select>
+                        <button onclick="addConstraint('${activity}')" class="bg-red-500 text-white py-3 px-6 rounded-xl font-bold hover:bg-red-600 transition">Restringir</button>
+                    </div>
+                `;
+            } else {
+                html += `<p class="text-green-600 font-semibold mt-4">Todos os membros estão disponíveis ou já estão restritos para esta atividade.</p>`;
+            }
+
+            editor.innerHTML = html;
+        }
+        
+        function addConstraint(activity) {
+            const person = document.getElementById('personToRestrict').value;
+            if (person && !appState.constraints[activity].includes(person)) {
+                appState.constraints[activity].push(person);
+                appState.constraints[activity].sort();
+                renderConstraintEditor();
+            }
+        }
+        
+        function removeConstraint(activity, person) {
+            appState.constraints[activity] = appState.constraints[activity].filter(p => p !== person);
+            renderConstraintEditor();
+        }
+
+        // Ação principal de salvar
+        async function saveAdminDataAndRegenerateSchedule() {
+            // 1. Gera a nova escala com as configurações atualizadas
+            appState.multiMonthScheduleData = generateScheduleData(appState.people, appState.constraints);
+            
+            // 2. Salva o novo estado (incluindo a escala cacheada) no Firestore
+            await saveAppStateToFirestore(true);
+            
+            // 3. Fecha o painel e atualiza a UI principal (o onSnapshot fará isso automaticamente, mas chamamos para feedback imediato)
+            closeAdminPanel();
+            initializeUI(); 
+        }
+
+        // --- INICIALIZAÇÃO GERAL ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setupFirebase(); // Inicia Firebase, Auth e Listener
+        });
+
+        // --- Exposição Global para Eventos Inline (FIX para ReferenceError) ---
+        // Funções definidas dentro de módulos (type="module") não são globais por padrão.
+        // É necessário anexá-las explicitamente à janela para que o HTML onclick funcione.
+        window.openAdminPanel = openAdminPanel;
+        window.closeAdminPanel = closeAdminPanel;
+        window.checkAdminPassword = checkAdminPassword;
+        window.renderConstraintEditor = renderConstraintEditor;
+        window.addMember = addMember;
+        window.removeMember = removeMember;
+        window.addConstraint = addConstraint;
+        window.removeConstraint = removeConstraint;
+        window.saveAdminDataAndRegenerateSchedule = saveAdminDataAndRegenerateSchedule;
+        window.logoutAdmin = logoutAdmin; // Novo: Expondo função de Logout
+
     </script>
 </body>
 </html>
